@@ -31,7 +31,7 @@ class FixProposal:
 
 
 @dataclass(frozen=True)
-class IncidentDemoResult:
+class IncidentProofResult:
     incident: Incident
     root_cause: str
     blast_radius: object
@@ -44,7 +44,7 @@ class IncidentDemoResult:
     report_path: Path
 
 
-class IncidentProofDemo:
+class IncidentProofEngine:
     """
     End-to-end IncidentProof demonstration pipeline.
 
@@ -79,7 +79,7 @@ class IncidentProofDemo:
         reproduction_scenario: ReproductionScenario,
         expected_verification_tokens: tuple[str, ...] = (),
         evidence_refs: tuple[str, ...] = (),
-    ) -> IncidentDemoResult:
+    ) -> IncidentProofResult:
         # 1. INVESTIGATION
         investigation = [
             f"Incident: {incident.name}",
@@ -188,7 +188,7 @@ class IncidentProofDemo:
         )
         self.proof.write_markdown(report, report_path)
 
-        return IncidentDemoResult(
+        return IncidentProofResult(
             incident=incident,
             root_cause=root_cause,
             blast_radius=blast_radius,
@@ -207,7 +207,7 @@ def run_demo(
     catalog_path: Path | str = "data/service_catalog.json",
     runbook_index_path: Path | str = "data/runbook_index.json",
     report_dir: Path | str = "reports",
-) -> IncidentDemoResult:
+) -> IncidentProofResult:
     """
     Run a deterministic local IncidentProof demonstration.
 
@@ -216,7 +216,7 @@ def run_demo(
     reliably during a hackathon presentation.
     """
 
-    demo = IncidentProofDemo(
+    demo = IncidentProofEngine(
         catalog_path=catalog_path,
         runbook_index_path=runbook_index_path,
         report_dir=report_dir,
