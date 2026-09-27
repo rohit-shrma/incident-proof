@@ -28,41 +28,41 @@ def run_demo(
     )
 
     incident = Incident(
-        name="payment-api-oom",
-        service="payment-api",
+        name="service-memory-failure",
+        service="example-service",
         namespace="production",
-        symptom="OOMKilled payment-api pods after memory usage exceeded limit",
+        symptom="Service instances restarted after memory usage exceeded the configured limit",
     )
 
     reproduction = ReproductionScenario(
-        name="reproduce-payment-api-oom",
+        name="reproduce-service-memory-failure",
         command=(
             "python",
             "-c",
-            "import sys; print('OOMKilled: memory limit exceeded'); sys.exit(1)",
+            "import sys; print('MemoryLimitExceeded: instance restarted'); sys.exit(1)",
         ),
-        expected_failure_tokens=("OOMKilled",),
+        expected_failure_tokens=("MemoryLimitExceeded",),
     )
 
     fix = FixProposal(
         description=(
-            "Increase payment-api memory allocation and remove the "
-            "memory-retention condition identified during investigation."
+            "Increase the affected service's memory allocation and remove "
+            "the memory-retention condition identified during investigation."
         ),
         verification_command=(
             "python",
             "-c",
-            "print('payment-api healthy verification passed')",
+            "print('service healthy verification passed')",
         ),
     )
 
     return demo.run(
         incident=incident,
-        root_cause="Payment worker retained memory across requests.",
+        root_cause="A memory-retention condition caused the service to exceed its configured memory limit.",
         fix=fix,
         reproduction_scenario=reproduction,
         expected_verification_tokens=("healthy", "passed"),
-        evidence_refs=("demo-reproduction", "demo-verification"),
+        evidence_refs=("reproduction-evidence", "verification-evidence"),
     )
 
 
