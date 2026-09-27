@@ -1,6 +1,34 @@
-# Claude Ops Investigator
+# IncidentProof
 
-An MCP-based Kubernetes incident investigation tool with two supported agent harnesses — Claude Code and IBM Bob Shell — combining live cluster signals, Prometheus, log search, runbooks, evidence memory, and structured incident reports.
+When production breaks, IncidentProof investigates the evidence, identifies the root cause, measures the blast radius, reproduces the failure, generates a fix proposal, tests the fix, and produces a proof report.
+
+IncidentProof turns incident response from guesswork into a verifiable evidence chain.
+
+The workflow is:
+
+INCIDENT
+  ↓
+INVESTIGATE
+  ↓
+ROOT CAUSE
+  ↓
+BLAST RADIUS
+  ↓
+REPRODUCE
+  ↓
+GENERATE FIX
+  ↓
+SAFETY GATE
+  ↓
+REGRESSION TEST
+  ↓
+VERIFY
+  ↓
+PROOF REPORT
+  ↓
+DRAFT PR
+  ↓
+HUMAN APPROVAL
 
 Claude Ops Investigator helps engineers investigate Kubernetes incidents safely by combining read-only operational tools, external evidence storage, compact investigation memory, and human-controlled remediation boundaries.
 
@@ -8,73 +36,127 @@ The goal is not to give an AI unrestricted production access. The goal is to exp
 
 ## What this project provides
 
-- Narrow MCP-style tools instead of generic `kubectl`
-- Read-only live Kubernetes investigation
-- Per-harness project instructions (CLAUDE.md, AGENTS.md, Bob mode rules)
-- MCP resources, tools, and prompts
-- Skills, slash commands, and scoped project rules
-- Coordinator/subagent-style investigation workflows
-- Structured tool errors
-- Hooks and gates for destructive actions
-- Structured incident-report output
-- Human escalation for risky or ambiguous actions
+- AI-assisted incident investigation
+- Evidence-grounded root-cause analysis
+- Parallel investigation across Kubernetes, metrics, logs, and runbooks
+- Blast-radius analysis across affected services and dependencies
+- Automatic incident reproduction
+- AI-generated fix proposals
+- Safety gate before verification or risky actions
+- Automatic regression-test generation
+- Independent fix verification
+- Evidence-backed proof reports
+- Draft-only PR workflow with human approval
+- Auditable evidence refrences and investigation artifacts
 
-## Safety rule
+## Safety model
 
-Start read-only. Do not give Claude unrestricted shell, `kubectl`, Helm, or production mutation permissions.
+IncidentProof is designed around controlled automation rather than unrestricted production access.
 
-Allowed operations in this scaffold:
+The system separates investigation, remediation, verification, and human approval:
 
-- `kubectl get`
-- `kubectl describe`
-- `kubectl logs`
-- `kubectl top`
+- Investigation uses read-only evidence gathering.
+- Root-cause findings are backed by collected evidence.
+- Reproduction runs through controlled commands with timeouts.
+- Proposed fixes pass through a safety gate before verification.
+- Regression tests are generated before declaring a fix successful.
+- Verification checks that the expected behavior is restored.
+- The final proof report records the evidence chain and verification result.
+- Code changes are never silently pushed to production.
+- PR creation is draft-only and remains subject to human review.
 
-Blocked operations include:
-
-- `kubectl delete`
-- `kubectl apply`
-- `kubectl patch`
-- `kubectl scale`
-- `kubectl rollout restart`
-- `helm upgrade`
-- `kubectl exec` by default
+Potentially destructive commands are explicitly blocked by the verification safety layer.
 
 ## Quick start
 
-```bash
-cd claude-ops-investigator
+Clone the repository and install the project:
+
+```cmd
+git clone https://github.com/rohit-shrma/incident-proof.git
+cd incident-proof
 python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
 
-Check Kubernetes access:
+Install the project dependencies:
 
-```bash
-kubectl config current-context
-kubectl auth can-i get pods -n si
-kubectl auth can-i get pods/log -n si
-```
+    pip install -e ".[dev]"
 
-Run a read-only snapshot:
+Run the test suite:
 
-```bash
-python -m claude_ops.main investigate --namespace si --service event-data --since-minutes 60
-```
+    python -m pytest
 
-Run tests:
+Run the IncidentProof end-to-end demo:
 
-```bash
-pytest
-```
+    python -m claude_ops.orchestration.demo
+
+The demo runs the complete IncidentProof workflow:
+
+    INCIDENT
+      ↓
+    INVESTIGATE
+      ↓
+    ROOT CAUSE
+      ↓
+    BLAST RADIUS
+      ↓
+    REPRODUCE
+      ↓
+    GENERATE FIX
+      ↓
+    SAFETY GATE
+      ↓
+    REGRESSION TEST
+      ↓
+    VERIFY
+      ↓
+    PROOF REPORT
+
+The generated proof report is written to:
+
+    reports/
+
+The demo uses a simulated incident and does not require access to a real
+production Kubernetes cluster.
+
+For live operational investigations, optional Kubernetes, Prometheus, and
+IBM Cloud Logs configuration is described in the environment sections below.
 
 ## Slash commands
 
-Both harnesses expose the same two capabilities: a read-only investigation
-command, and a separate, autonomous fix-proposal command. These two are
-deliberately kept apart — `/investigate-incident` never triggers a code
-change on its own; only the explicit `/propose-fix` command can do that.
+IncidentProof provides two complementary workflows: investigation and
+fix generation.
+
+### `/investigate-incident`
+
+Starts an evidence-driven incident investigation.
+
+```text
+/investigate-incident
+
+The investigation workflow:
+
+1. Collects incident evidence.
+2. Forms and evaluates possible root causes.
+3. Analyzes the blast radius.
+4. Reproduces the reported failure when possible.
+5. Generates a structured incident result.
+6. Preserves evidence references for auditability.
+
+### `/propose-fix`
+
+Generates a fix proposal after an incident has been investigated.
+
+The workflow:
+
+1. Uses the investigation findings and root cause.
+2. Generates a proposed code change.
+3. Applies safety checks before verification.
+4. Generates regression tests.
+5. Verifies the proposed fix.
+6. Produces a proof report.
+7. Keeps human approval in the loop before code changes are merged.
+
+The two workflows are intentionally separated: investigation does not
+automatically modify code or production systems.
 
 ### Claude Code slash commands
 
@@ -185,138 +267,181 @@ explicitly.
 
 ## Environment for optional tools
 
-Prometheus:
+IncidentProof can connect to external operational evidence sources when
+configured. These integrations are optional for the local demo.
+
+### Prometheus
+
+Set the following environment variables when using Prometheus metrics:
+
 - `PROMETHEUS_URL`
 - `PROMETHEUS_AUTO_PORT_FORWARD`
 - `PROMETHEUS_PF_SERVICE`
 - `PROMETHEUS_PF_NAMESPACE`
 
-IBM Cloud Logs:
+### IBM Cloud Logs
+
+Set the following environment variables when using IBM Cloud Logs:
+
 - `IBM_LOGS_ENDPOINT`
 - `IBM_CLOUD_API_KEY`
 
-Copy `.env.example` to `.env` and fill in local values. Never commit `.env`.
-The MCP server loads it automatically at startup so these tools have access
-without any secrets going into `.mcp.json`.
+### Local configuration
+
+Copy `.env.example` to `.env` and add your local values.
+
+The `.env` file is gitignored and must never be committed to the repository.
+Secrets should not be placed in `.mcp.json`.
+
+The local IncidentProof demo does not require these external credentials.
 
 ## No-token local tests
 
-These exercise the tools and structured error paths without any real
-Prometheus, IBM Cloud, or Kubernetes credentials:
+The project includes a local test suite that exercises the core IncidentProof
+engines without requiring access to a real production environment.
 
-```bash
-python -m pytest
-python scripts/mcp_smoke_client.py
-```
+Run the complete test suite:
 
-Direct tool checks:
+    python -m pytest
 
-```bash
-python - <<'PY'
-from claude_ops.tools.prometheus_preflight import ensure_prometheus
-import json
-print(json.dumps(ensure_prometheus(), indent=2))
-PY
+The test suite covers:
 
-python - <<'PY'
-from claude_ops.tools.ibm_logs_tools import ibm_logs_search_errors
-import json
-print(json.dumps(ibm_logs_search_errors("si", "multi-system-processor", limit=1), indent=2))
-PY
-```
+- Blast-radius analysis
+- Incident reproduction
+- Safety-gated verification
+- Automatic regression-test generation
+- Evidence storage
+- Proof-report generation
+- MCP tools and structured error handling
+
+The local end-to-end demo also runs without real Kubernetes, Prometheus, or
+IBM Cloud Logs credentials:
+
+    python -m claude_ops.orchestration.demo
 
 ## Local environment
 
-The MCP server needs environment variables for the optional Prometheus and
-IBM Cloud Logs tools (`PROMETHEUS_URL`, `IBM_LOGS_ENDPOINT`,
-`IBM_CLOUD_API_KEY`, etc.). Configure them locally with a `.env` file — it is
-gitignored and loaded automatically, no secrets ever need to go in
-`.mcp.json`.
+IncidentProof can run locally without connecting to a production environment.
 
-```bash
-cp .env.example .env
-# edit .env with your local values
-source .venv/bin/activate
-claude
-```
+For the local demo, no Kubernetes, Prometheus, IBM Cloud Logs, or production
+credentials are required.
 
-`src/claude_ops/mcp/server.py` calls `load_dotenv()` at startup, so the MCP
-server picks up `.env` automatically when Claude Code launches it — no
-manual `export` needed. Missing `.env` is fine; tools that need a variable
-that still isn't set return a structured config error instead of failing
-silently.
+Optional integrations can be configured through a local `.env` file:
+
+- `PROMETHEUS_URL`
+- `IBM_LOGS_ENDPOINT`
+- `IBM_CLOUD_API_KEY`
+
+The `.env` file is gitignored and must never be committed to the repository.
+
+For local development:
+
+    pip install -e ".[dev]"
+    python -m pytest
+
+To run the end-to-end IncidentProof demonstration:
+
+    python -m claude_ops.orchestration.demo
+
+The local demo uses a simulated incident and does not require production
+credentials or access to a real production cluster.
 
 ## Harness hooks (safety gate + audit trail)
 
-`.claude/settings.json` wires four read-only Claude Code hooks under
-`.claude/hooks/`. They're a harness-level safety net and audit trail that sit
-alongside the application-level guardrails (`src/claude_ops/hooks.py`,
-`schemas/incident_report_schema.py`) — none of them call Kubernetes,
-Prometheus, IBM Cloud Logs, or the Claude API; they only inspect the JSON
-Claude Code already passes them on stdin, and the only files they write are
-JSONL audit logs under `runs/` (gitignored, like the rest of that directory).
+`.claude/settings.json` configures four read-only Claude Code hooks under
+`.claude/hooks/`. These hooks provide a harness-level safety net and audit
+trail alongside the application-level guardrails in
+`src/claude_ops/hooks.py` and `schemas/incident_report_schema.py`.
+
+The hooks do not call Kubernetes, Prometheus, IBM Cloud Logs, or the Claude
+API. They only inspect the JSON that Claude Code passes to them through
+stdin. Their only file output is JSONL audit logs under `runs/`, which is
+gitignored.
 
 | Hook | Event | What it does |
 |---|---|---|
-| `block_unsafe_shell.py` | `PreToolUse` on `Bash` | Denies raw shell `kubectl delete/apply/patch/scale/rollout restart/exec` and `helm upgrade` — the second gate for a destructive command reaching `Bash` directly, bypassing the typed MCP tools that `hooks.py::validate_kubectl_verb` already gates. |
-| `audit_mcp_tool_call.py` | `PostToolUse` on `mcp__claude-ops-investigator__.*` | Appends `{tool_name, timestamp, status, evidence_ref, session_id}` to `runs/mcp-tool-audit.jsonl` for every completed MCP tool call. |
-| `audit_subagent_lifecycle.py` | `SubagentStart` / `SubagentStop` | Appends `{event, timestamp, session_id, subagent_type, description}` to `runs/subagent-audit.jsonl`. |
-| `validate_final_report.py` | `Stop` | If the last assistant message looks like an incident report (mentions "Subagent usage audit", "incident report", or `requires_human`), checks it contains `evidence_ref`, a "Subagent usage audit" table, `ruled_out`, `unknowns`, and an explicit confirmed/not-confirmed statement — and blocks the stop with a reason if any are missing. Ordinary conversational turns are left alone. |
+| `block_unsafe_shell.py` | `PreToolUse` on `Bash` | Blocks raw shell commands such as `kubectl delete`, `kubectl apply`, `kubectl patch`, `kubectl scale`, `kubectl rollout restart`, `kubectl exec`, and `helm upgrade`. This provides a second safety gate for destructive commands reaching `Bash` directly. |
+| `audit_mcp_tool_call.py` | `PostToolUse` on MCP tools | Records completed MCP tool calls in `runs/mcp-tool-audit.jsonl`, including the tool name, timestamp, status, evidence reference, and session ID. |
+| `audit_subagent_lifecycle.py` | `SubagentStart` / `SubagentStop` | Records subagent lifecycle events in `runs/subagent-audit.jsonl`, including the event, timestamp, session ID, subagent type, and description. |
+| `validate_final_report.py` | `Stop` | Validates incident-report-style final responses before the session stops. When applicable, it checks for evidence references, a Subagent usage audit table, `ruled_out`, `unknowns`, and an explicit confirmed/not-confirmed statement. Missing required information blocks the stop with an explanation. Ordinary conversational responses are left unchanged. |
+
+Together, these hooks provide an additional safety and audit layer around
+the Claude Code workflow without directly accessing production systems.
 
 ### Disabling hooks locally
 
-Two ways, from least to most surgical:
+Hooks are enabled by default because they provide safety checks and audit
+trails during the Claude Code workflow.
 
-- **Disable everything**: add `"disableAllHooks": true` to
-  `.claude/settings.local.json` (gitignored, personal — never commit this to
-  the project's shared `.claude/settings.json`).
-- **Disable just these four**: set `CLAUDE_OPS_HOOKS_DISABLED=1` in your
-  shell environment before launching `claude`. Each script checks this at
-  the top and no-ops immediately — no audit lines written, no shell command
-  blocked, no report validated.
+If hooks need to be disabled temporarily for local development, there are two
+options:
+
+- **Disable everything:** Add `"disableAllHooks": true` to
+  `.claude/settings.local.json`. This file is gitignored and intended for
+  personal local settings. Do not add this setting to the shared
+  `.claude/settings.json`.
+
+- **Disable only the IncidentProof hooks:** Set
+  `CLAUDE_OPS_HOOKS_DISABLED=1` in the shell environment before launching
+  Claude Code. Each hook checks this variable at startup and exits without
+  performing its safety or audit action.
+
+Disabling the hooks is a local development option and does not change the
+application-level safety controls in the IncidentProof codebase.
 
 ## Recommended first live use
 
-Use a non-production namespace first.
+For the first live operational investigation, use a non-production namespace
+rather than a production environment.
 
-```bash
-python -m claude_ops.main investigate --namespace si --service multi-system-processor --since-minutes 120
-```
+The investigation can be started with the following command:
 
-Then paste the generated JSON snapshot into Claude/Claude Code and ask it to produce an incident report using the schema in `src/claude_ops/schemas/incident_report_schema.py`.
+    python -m claude_ops.main investigate --namespace <non-production-namespace> --service <service-name> --since-minutes 120
+
+This command collects an investigation snapshot for the specified service and
+time window.
+
+After the investigation completes, provide the generated JSON snapshot to
+Claude or Claude Code and ask it to produce an incident report using the
+schema defined in:
+
+    src/claude_ops/schemas/incident_report_schema.py
+
+Review the generated findings and evidence before taking any remediation
+action. The investigation workflow is intended to support human review rather
+than automatically modifying production systems.
 
 ## MCP client/server map
 
-In this project:
+IncidentProof uses the Model Context Protocol (MCP) to connect Claude Code
+with the project's operational investigation tools.
 
-```text
-Claude Code = MCP client
-src/claude_ops/mcp/server.py = local MCP server
-.mcp.json = project-level MCP client configuration for Claude Code
-```
+The project uses the following MCP architecture:
 
-Start the MCP server manually for a quick syntax check:
+    Claude Code = MCP client
+    src/claude_ops/mcp/server.py = local MCP server
+    .mcp.json = project-level MCP client configuration for Claude Code
 
-```bash
-python -m claude_ops.mcp.server
-```
+The MCP server can be started manually for a local syntax or startup check:
 
-For Claude Code, keep `.mcp.json` in the project root. Claude Code reads the config and launches the server over STDIO.
+    python -m claude_ops.mcp.server
 
-Optional smoke test:
+For Claude Code, keep `.mcp.json` in the project root. Claude Code reads this
+configuration and launches the MCP server over STDIO.
 
-```bash
-pip install -e ".[dev,mcp]"
-python scripts/mcp_smoke_client.py
-```
+An optional local smoke test is available when the MCP development dependency
+is installed:
 
-The MCP server exposes:
+    pip install -e ".[dev,mcp]"
+    python scripts/mcp_smoke_client.py
 
-Resources:
+### MCP resources
+
 - `ops://runbook-catalog`
 - `ops://service-catalog`
 
-Tools:
+### MCP tools
+
 - `k8s_list_pods`
 - `k8s_describe_pod`
 - `k8s_get_pod_logs`
@@ -337,5 +462,10 @@ Tools:
 - `ibm_logs_search_text`
 - `evidence_get_detail`
 
-Prompt:
+### MCP prompt
+
 - `investigate_incident`
+
+These MCP resources, tools, and prompts provide Claude Code with structured
+access to the evidence sources used by the IncidentProof investigation
+workflow.
